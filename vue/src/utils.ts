@@ -38,7 +38,7 @@ export const getNextPosition = (data: number[][]): [number, number] | false => {
 
 export const getNextValue = (): number => {
   // Very easy and inelegant way of give 25% probability to the number 4.
-  const initialSquareValues: number[] = [2, 2, 2, 4];
+  const initialSquareValues: number[] = [1];
   const index: number = randomize(initialSquareValues.length);
 
   return initialSquareValues[index];
