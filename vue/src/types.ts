@@ -1,4 +1,11 @@
-export type OptionalNumber = number | undefined;
+import type { CSSProperties } from 'vue';
+export interface Tile {
+  id: string;
+  value: number;
+  style: CSSProperties;
+}
+
+export type OptionalTile = Tile | undefined;
 
 export enum Command {
   ArrowUp = 'ArrowUp',

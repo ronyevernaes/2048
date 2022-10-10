@@ -1,5 +1,5 @@
 import { Axis, Command, Direction } from './types';
-import type { MovementConfig } from './types';
+import type { MovementConfig, OptionalTile, Tile } from './types';
 
 const randomize = (max: number): number => {
   const { floor, random } = Math;
@@ -8,7 +8,7 @@ const randomize = (max: number): number => {
   return result;
 };
 
-const getAvailablePositions = (data: number[][]): string[] => {
+const getAvailablePositions = (data: OptionalTile[][]): string[] => {
   const availablePositions: string[] = [];
 
   for (let i = 0; i < data.length; i++) {
@@ -22,7 +22,16 @@ const getAvailablePositions = (data: number[][]): string[] => {
   return availablePositions;
 };
 
-export const getNextPosition = (data: number[][]): [number, number] | false => {
+export const delay = (fn: Function, interval: number) => {
+  const myInterval = setInterval(() => {
+    fn();
+    clearInterval(myInterval);
+  }, interval);
+};
+
+export const getNextPosition = (
+  data: OptionalTile[][]
+): [number, number] | false => {
   const availablePositions: string[] = getAvailablePositions(data);
 
   const index: number = randomize(availablePositions.length);
@@ -37,7 +46,6 @@ export const getNextPosition = (data: number[][]): [number, number] | false => {
 };
 
 export const getNextValue = (): number => {
-  // Very easy and inelegant way of give 25% probability to the number 4.
   const initialSquareValues: number[] = [1];
   const index: number = randomize(initialSquareValues.length);
 
@@ -112,4 +120,10 @@ export const changeLoopIndex = (
     default:
       throw new Error(`Invalid movement config direction: ${direction}`);
   }
+};
+
+export const getStylePosition = (x: number, y: number): CSSProperties => {
+  return {
+    transform: `translate(${75 * x}px, ${75 * y}px)`,
+  };
 };

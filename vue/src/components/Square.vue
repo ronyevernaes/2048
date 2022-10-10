@@ -6,14 +6,14 @@ export default { name: 'SquareComponent' };
 defineProps({
   value: {
     type: Number,
-    required: true,
+    required: false,
   },
 });
 </script>
 
 <template>
   <div class="square">
-    <h1>{{ value !== 0 ? value : '' }}</h1>
+    <!-- <h1>{{ value !== 0 ? value : '' }}</h1> -->
   </div>
 </template>
 

@@ -3,20 +3,23 @@ export default { name: 'GridComponent' };
 </script>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
-import type { Ref } from 'vue';
+import { ref, watch } from 'vue';
+import type { Ref, CSSProperties } from 'vue';
 
-import Square from './Square.vue';
 import {
+  delay,
   getNextPosition,
   getNextValue,
   getMovementConfig,
   getStart,
   isContinueLoop,
   changeLoopIndex,
-} from '../utils.ts';
-import type { MovementConfig, OptionalNumber } from '../types.ts';
-import { Axis, Command, Direction, GameStatus } from '../types.ts';
+  getStylePosition,
+} from '../utils';
+
+import type { MovementConfig, OptionalTile, Tile } from '../types';
+
+import { Axis, Command, GameStatus } from '../types';
 
 const props = defineProps({
   size: {
@@ -25,7 +28,8 @@ const props = defineProps({
   },
 });
 
-const model: Ref<number[][]> = ref([]);
+const model: Ref<OptionalTile[][]> = ref([]);
+const tiles: Ref<Tile[]> = ref([]);
 const status: Ref<GameStatus> = ref(GameStatus.Started);
 const gridStyles: CSSProperties = {};
 
@@ -37,16 +41,26 @@ const createNewSquare = (): boolean => {
   }
 
   const [x, y]: [number, number] = nextPosition;
-  const firstValue: number = getNextValue();
-  model.value[x][y] = firstValue;
+  const value: number = getNextValue();
+
+  const newTile: Tile = {
+    id: `tile-${new Date().getMilliseconds().toString()}`,
+    value,
+    style: getStylePosition(x, y),
+  };
+
+  tiles.value.push(newTile);
+  model.value[x][y] = newTile;
 
   return true;
 };
 
 const initModel = (size: number): void => {
-  model.value = Array();
+  model.value = Array<OptionalTile[]>();
+  tiles.value = Array<Tile>();
+
   for (let i: number = 0; i < size; i++) {
-    const row: number[] = Array(size);
+    const row: Tile[] = Array<Tile>(size);
 
     model.value.push(row);
   }
@@ -66,33 +80,35 @@ watch(
   }
 );
 
-const getValueByAxis = (
+const getTileByAxis = (
   axis: Axis,
   mainAxisIndex: number,
   crossAxisIndex: number
-): number => {
+): OptionalTile => {
   switch (axis) {
     case Axis.X:
-      return model.value[crossAxisIndex][mainAxisIndex];  
-    case Axis.Y:
       return model.value[mainAxisIndex][crossAxisIndex];
+    case Axis.Y:
+      return model.value[crossAxisIndex][mainAxisIndex];
     default:
       throw new Error(`Invalid axis value: "${axis}"`);
   }
 };
 
-const setValueByAxis = (
+const setTileByAxis = (
   axis: Axis,
   mainAxisIndex: number,
   crossAxisIndex: number,
-  value: number
+  tile: Tile
 ): void => {
   switch (axis) {
     case Axis.X:
-      model.value[crossAxisIndex][mainAxisIndex] = value;
+      model.value[mainAxisIndex][crossAxisIndex] = tile;
+      tile.style = getStylePosition(mainAxisIndex, crossAxisIndex);
       break;
     case Axis.Y:
-      model.value[mainAxisIndex][crossAxisIndex] = value;
+      model.value[crossAxisIndex][mainAxisIndex] = tile;
+      tile.style = getStylePosition(crossAxisIndex, mainAxisIndex);
       break;
     default:
       throw new Error(`Invalid axis value: "${axis}"`);
@@ -100,7 +116,9 @@ const setValueByAxis = (
 };
 
 const move = (command: string): void => {
-  const { direction, axis }: MovementConfig = getMovementConfig(command as Command);
+  const { direction, axis }: MovementConfig = getMovementConfig(
+    command as Command
+  );
   const { size } = props;
 
   let somethingMoved = false;
@@ -119,22 +137,26 @@ const move = (command: string): void => {
         isContinueLoop(direction, li, size, true);
         li = changeLoopIndex(direction, li)
       ) {
-        const pivotSquare = getValueByAxis(axis, mi, ci);
-        const lookupSquare = getValueByAxis(axis, li, ci);
+        const pivotSquare = getTileByAxis(axis, mi, ci);
+        const lookupSquare = getTileByAxis(axis, li, ci);
 
         if (pivotSquare) {
           if (lookupSquare) {
-            if (lookupSquare === pivotSquare) {
-              setValueByAxis(axis, mi, ci, lookupSquare * 2);
-              setValueByAxis(axis, li, ci, undefined);
+            if (lookupSquare.value === pivotSquare.value) {
+              setTileByAxis(axis, mi, ci, lookupSquare);
+              clearTile(axis, li, ci);
+              delay(() => {
+                removeTile(pivotSquare);
+                lookupSquare.value *= 2;
+              }, 250);
               somethingMoved = true;
             }
             break;
           }
         } else {
           if (lookupSquare) {
-            setValueByAxis(axis, mi, ci, lookupSquare);
-            setValueByAxis(axis, li, ci, undefined);
+            setTileByAxis(axis, mi, ci, lookupSquare);
+            clearTile(axis, li, ci);
             somethingMoved = true;
           }
         }
@@ -148,48 +170,76 @@ const move = (command: string): void => {
       return;
     }
 
-    createNewSquare();
+    delay(() => {
+      createNewSquare();
 
-    if (!existMergeableSquares()) {
-      status.value = GameStatus.Lost;
-    }
+      if (!existMergeableSquares()) {
+        status.value = GameStatus.Lost;
+      }
+    }, 150);
+  }
+};
+
+const removeTile = (tileToRemove: Tile): void => {
+  const indexToRemove = tiles.value.findIndex(
+    (tile) => tile.id === tileToRemove.id
+  );
+
+  if (indexToRemove >= 0) {
+    tileToRemove.style.zIndex = -1;
+    tiles.value.splice(indexToRemove, 1);
+  }
+};
+
+const clearTile = (
+  axis: Axis,
+  mainAxisIndex: number,
+  crossAxisIndex: number
+): void => {
+  switch (axis) {
+    case Axis.X:
+      model.value[mainAxisIndex][crossAxisIndex] = undefined;
+      break;
+    case Axis.Y:
+      model.value[crossAxisIndex][mainAxisIndex] = undefined;
+      break;
+    default:
+      throw new Error(`Invalid axis value: "${axis}"`);
   }
 };
 
 const find2048 = (): boolean => {
   return !!model.value.find(
-    row => row.find(square => square === 2048)
+    (row) => !!row.find((square: OptionalTile) => square?.value === 2048)
   );
 };
 
-// This has to be called when there is no space
 const existMergeableSquares = (): boolean => {
   const { size } = props;
 
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
       // compares [i, j] with [i + 1, j], [i, j + 1], [i - 1, j], [i, j - 1]
-      if (!model.value[i][j] ||
-        i < (size - 1) && (
-          model.value[i][j] === model.value[i + 1][j] ||
-          model.value[i][j] === model.value[i][j + 1]
-        ) ||
-        i > 0 && (
-          model.value[i][j] === model.value[i - 1][j] ||
-          model.value[i][j] === model.value[i][j - 1]
-        )
+      if (
+        !model.value[i][j] ||
+        (i < size - 1 &&
+          (model.value[i][j]?.value === model.value[i + 1][j]?.value ||
+            model.value[i][j]?.value === model.value[i][j + 1]?.value)) ||
+        (i > 0 &&
+          (model.value[i][j]?.value === model.value[i - 1][j]?.value ||
+            model.value[i][j]?.value === model.value[i][j - 1]?.value))
       ) {
         return true;
       }
     }
   }
   return false;
-}
+};
 
 watch(
   () => status.value,
-  (val: number) => {
-    switch(val) {
+  (val: GameStatus) => {
+    switch (val) {
       case GameStatus.Lost:
         alert('You lost');
         break;
@@ -200,22 +250,6 @@ watch(
   }
 );
 
-// Restart game
-// Transitions
-
-const getValue = (x: number, y: number): number => {
-  if (!model.value || model.value.length === 0) {
-    return 0;
-  }
-  if (!model.value[x] || model.value[x].length === 0) {
-    return 0;
-  }
-  if (!model.value[x][y]) {
-    return 0;
-  }
-  return model.value[x][y];
-};
-
 defineExpose({
   move,
   restart: () => initModel(props.size),
@@ -223,13 +257,23 @@ defineExpose({
 </script>
 
 <template>
-  <div class="grid" v-if="size && model && model.length > 0" :style="gridStyles">
+  <div
+    class="grid"
+    v-if="size && model && model.length > 0"
+    :style="gridStyles"
+  >
     <template v-for="row in size" :key="`grid-row-${row}`">
-      <Square
+      <div
         v-for="col in size"
-        :key="`grid-row-${col}`"
-        :value="getValue(row - 1, col - 1)"
+        :key="`grid-cell-${row}-${col}`"
+        class="grid-cell"
       />
+    </template>
+
+    <template v-for="tile in tiles" :key="tile.id">
+      <div class="tile" :class="`tile-${tile.value}`" :style="tile.style">
+        <h1>{{ tile.value }}</h1>
+      </div>
     </template>
   </div>
   <div class="message">{{ status }}</div>
@@ -240,7 +284,82 @@ defineExpose({
   flex: 0 0 auto;
   display: grid;
 }
+.grid-cell {
+  width: 75px;
+  height: 75px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  background-color: #fff9eb;
+}
+
 .message {
   padding-top: 8px;
+}
+.tile {
+  position: absolute;
+  transition: transform 100ms;
+  width: 75px;
+  height: 75px;
+  border: 1px solid var(--color-border);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  z-index: 0;
+}
+.new-tile {
+  width: 75px;
+  height: 75px;
+}
+.tile-1 {
+  background-color: #ffba08;
+  color: black;
+}
+.tile-2 {
+  background-color: #ffba08;
+  color: black;
+}
+.tile-4 {
+  background-color: #faa307;
+  color: black;
+}
+.tile-8 {
+  background-color: #faa307;
+  color: black;
+}
+.tile-16 {
+  background-color: #f48c06;
+  color: white;
+}
+.tile-32 {
+  background-color: #e85d04;
+  color: white;
+}
+.tile-64 {
+  background-color: #dc2f02;
+  color: white;
+}
+.tile-128 {
+  background-color: #d00000;
+  color: white;
+}
+.tile-256 {
+  background-color: #9d0208;
+  color: white;
+}
+.tile-512 {
+  background-color: #6a040f;
+  color: white;
+}
+.tile-1024 {
+  background-color: #370617;
+  color: white;
+}
+.tile-2048 {
+  background-color: #03071e;
+  color: white;
 }
 </style>

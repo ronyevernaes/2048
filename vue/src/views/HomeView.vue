@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import type { Ref } from 'vue';
+
 import { useKeypress } from 'vue3-keypress';
 
 import Grid from '../components/Grid.vue';
 
-const size: number = ref<number>(4);
+const size: Ref<number> = ref<number>(4);
 
 const grid = ref<typeof Grid | null>(null);
 
