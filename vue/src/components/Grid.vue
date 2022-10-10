@@ -115,69 +115,73 @@ const setTileByAxis = (
   }
 };
 
-const move = (command: string): void => {
-  const { direction, axis }: MovementConfig = getMovementConfig(
-    command as Command
-  );
-  const { size } = props;
+const move = (command: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const { direction, axis }: MovementConfig = getMovementConfig(
+      command as Command
+    );
+    const { size } = props;
+    let somethingMoved = false;
 
-  let somethingMoved = false;
-
-  // Cross axis pivoting - ci: Cross Axis Index
-  for (let ci: number = 0; ci < size; ci++) {
-    // Main axis pivoting - mi: Main Axis Index
-    for (
-      let mi: number = getStart(direction, size);
-      isContinueLoop(direction, mi, size);
-      mi = changeLoopIndex(direction, mi)
-    ) {
-      // Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
+    // Cross axis pivoting - ci: Cross Axis Index
+    for (let ci: number = 0; ci < size; ci++) {
+      // Main axis pivoting - mi: Main Axis Index
       for (
-        let li: number = changeLoopIndex(direction, mi);
-        isContinueLoop(direction, li, size, true);
-        li = changeLoopIndex(direction, li)
+        let mi: number = getStart(direction, size);
+        isContinueLoop(direction, mi, size);
+        mi = changeLoopIndex(direction, mi)
       ) {
-        const pivotSquare = getTileByAxis(axis, mi, ci);
-        const lookupSquare = getTileByAxis(axis, li, ci);
+        // Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
+        for (
+          let li: number = changeLoopIndex(direction, mi);
+          isContinueLoop(direction, li, size, true);
+          li = changeLoopIndex(direction, li)
+        ) {
+          const pivotSquare = getTileByAxis(axis, mi, ci);
+          const lookupSquare = getTileByAxis(axis, li, ci);
 
-        if (pivotSquare) {
-          if (lookupSquare) {
-            if (lookupSquare.value === pivotSquare.value) {
+          if (pivotSquare) {
+            if (lookupSquare) {
+              if (lookupSquare.value === pivotSquare.value) {
+                setTileByAxis(axis, mi, ci, lookupSquare);
+                clearTile(axis, li, ci);
+                delay(() => {
+                  removeTile(pivotSquare);
+                  lookupSquare.value *= 2;
+                }, 100);
+                somethingMoved = true;
+              }
+              break;
+            }
+          } else {
+            if (lookupSquare) {
               setTileByAxis(axis, mi, ci, lookupSquare);
               clearTile(axis, li, ci);
-              delay(() => {
-                removeTile(pivotSquare);
-                lookupSquare.value *= 2;
-              }, 250);
               somethingMoved = true;
             }
-            break;
-          }
-        } else {
-          if (lookupSquare) {
-            setTileByAxis(axis, mi, ci, lookupSquare);
-            clearTile(axis, li, ci);
-            somethingMoved = true;
           }
         }
       }
     }
-  }
 
-  if (somethingMoved) {
-    if (status.value === GameStatus.Started && find2048()) {
-      status.value = GameStatus.Won;
-      return;
-    }
-
-    delay(() => {
-      createNewSquare();
-
-      if (!existMergeableSquares()) {
-        status.value = GameStatus.Lost;
+    if (somethingMoved) {
+      if (status.value === GameStatus.Started && find2048()) {
+        status.value = GameStatus.Won;
+        return;
       }
-    }, 150);
-  }
+
+      delay(() => {
+        createNewSquare();
+
+        if (!existMergeableSquares()) {
+          status.value = GameStatus.Lost;
+        }
+        resolve();
+      }, 150);
+    } else {
+      resolve();
+    }
+  });
 };
 
 const removeTile = (tileToRemove: Tile): void => {

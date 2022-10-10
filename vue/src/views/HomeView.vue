@@ -10,9 +10,14 @@ const size: Ref<number> = ref<number>(4);
 
 const grid = ref<typeof Grid | null>(null);
 
-const onKeyPress = ({ event }: { event: KeyboardEvent }) => {
-  if (grid.value) {
-    grid.value.move(event.code);
+let moving: boolean = false;
+const onKeyPress = async ({ event }: { event: KeyboardEvent }) => {
+  if (!moving && grid.value) {
+    moving = true;
+    await grid.value.move(event.code);
+    moving = false;
+  } else {
+    console.log('moving', moving);
   }
 };
 
