@@ -7,6 +7,7 @@ import { ref, watch } from 'vue';
 import type { Ref, CSSProperties } from 'vue';
 
 import {
+  generateId,
   delay,
   getNextPosition,
   getNextValue,
@@ -44,7 +45,7 @@ const createNewSquare = (): boolean => {
   const value: number = getNextValue();
 
   const newTile: Tile = {
-    id: `tile-${new Date().getMilliseconds().toString()}`,
+    id: `tile-${generateId()}`,
     value,
     style: getStylePosition(x, y),
   };
@@ -148,7 +149,7 @@ const move = (command: string): Promise<void> => {
                 delay(() => {
                   removeTile(pivotSquare);
                   lookupSquare.value *= 2;
-                }, 100);
+                }, 50);
                 somethingMoved = true;
               }
               break;

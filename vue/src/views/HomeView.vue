@@ -16,8 +16,6 @@ const onKeyPress = async ({ event }: { event: KeyboardEvent }) => {
     moving = true;
     await grid.value.move(event.code);
     moving = false;
-  } else {
-    console.log('moving', moving);
   }
 };
 

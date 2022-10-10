@@ -22,6 +22,10 @@ const getAvailablePositions = (data: OptionalTile[][]): string[] => {
   return availablePositions;
 };
 
+export const generateId = (): string => {
+  return Date.now().toString();
+};
+
 export const delay = (fn: Function, interval: number) => {
   const myInterval = setInterval(() => {
     fn();
