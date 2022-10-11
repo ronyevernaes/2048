@@ -37,6 +37,6 @@ export enum GameStatus {
 
 export interface Position {
   axis: Axis;
-  mainAxisIndex: number;
-  crossAxisIndex: number;
+  mainIndex: number;
+  crossIndex: number;
 }

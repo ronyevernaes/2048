@@ -6,18 +6,11 @@ export default { name: 'GridComponent' };
 import { ref, watch } from 'vue';
 import type { Ref, CSSProperties } from 'vue';
 
-import type { MovementConfig, OptionalTile, Position, Tile } from '../types';
-import { Axis, Command, Direction, GameStatus } from '../types';
+import type { MovementConfig, OptionalTile, Tile } from '../types';
+import { Command, GameStatus } from '../types';
 import GridService from '../services/GridService';
 
-import {
-  delay,
-  getMovementConfig,
-  getStart,
-  isContinueLoop,
-  changeLoopIndex,
-  getStylePosition,
-} from '../utils';
+import { delay, getMovementConfig } from '../utils';
 
 const props = defineProps({
   size: {
@@ -29,12 +22,12 @@ const props = defineProps({
 const model: Ref<OptionalTile[][]> = ref([]);
 const tiles: Ref<Tile[]> = ref([]);
 const status: Ref<GameStatus> = ref(GameStatus.Started);
-const gridStyles: CSSProperties = {};
+const gridStyles: Ref<CSSProperties> = ref({});
 
-const service = new GridService();
+let service: GridService;
 
 const createNewTile = (): boolean => {
-  return service.createNewTile(model.value, tiles.value);
+  return service.createNewTile();
 };
 
 const initModel = (size: number): void => {
@@ -46,8 +39,10 @@ const initModel = (size: number): void => {
     model.value.push(row);
   }
 
-  gridStyles.gridTemplateRows = `repeat(${size}, 1fr)`;
-  gridStyles.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  gridStyles.value.gridTemplateRows = `repeat(${size}, 1fr)`;
+  gridStyles.value.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+  service = new GridService(model.value, tiles.value);
 
   createNewTile();
 };
@@ -56,139 +51,26 @@ initModel(props.size);
 
 watch(
   () => props.size,
-  (val: number) => {
-    initModel(val);
-  }
+  (val: number) => initModel(val)
 );
 
-const move = (command: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const { direction, axis }: MovementConfig = getMovementConfig(
-      command as Command
-    );
-    const { size } = props;
-    let somethingMoved = false;
+const move = async (command: string): Promise<void> => {
+  const movement: MovementConfig = getMovementConfig(command as Command);
+  const somethingMoved = await service.move(movement);
 
-    // Cross axis pivoting - ci: Cross Axis Index
-    for (let ci: number = 0; ci < size; ci++) {
-      // Main axis pivoting - mi: Main Axis Index
-      for (
-        let mi: number = getStart(direction, size);
-        isContinueLoop(direction, mi, size);
-        mi = changeLoopIndex(direction, mi)
-      ) {
-        const pivotPosition: Position = {
-          axis,
-          mainAxisIndex: mi,
-          crossAxisIndex: ci,
-        };
-
-        somethingMoved =
-          lookupAndMove(direction, pivotPosition) || somethingMoved;
-      }
+  if (somethingMoved) {
+    if (status.value === GameStatus.Started && find2048()) {
+      status.value = GameStatus.Won;
+      return;
     }
 
-    if (somethingMoved) {
-      if (status.value === GameStatus.Started && find2048()) {
-        status.value = GameStatus.Won;
-        return;
+    delay(() => {
+      createNewTile();
+
+      if (!existMergeableSquares()) {
+        status.value = GameStatus.Lost;
       }
-
-      delay(() => {
-        createNewTile();
-
-        if (!existMergeableSquares()) {
-          status.value = GameStatus.Lost;
-        }
-        resolve();
-      }, 150);
-    } else {
-      resolve();
-    }
-  });
-};
-
-// Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
-const lookupAndMove = (
-  direction: Direction,
-  pivotPosition: Position
-): boolean => {
-  const { axis, mainAxisIndex: mi, crossAxisIndex: ci } = pivotPosition;
-  let somethingMoved = false;
-  const start: number = changeLoopIndex(direction, mi);
-
-  for (
-    let li = start;
-    isContinueLoop(direction, li, props.size, true);
-    li = changeLoopIndex(direction, li)
-  ) {
-    const lookupPosition = {
-      axis,
-      mainAxisIndex: li,
-      crossAxisIndex: ci,
-    };
-    const pivotSquare = service.getTileByAxis(model.value, pivotPosition);
-    const lookupSquare = service.getTileByAxis(model.value, lookupPosition);
-
-    if (pivotSquare) {
-      if (lookupSquare) {
-        somethingMoved =
-          compareAndMergeTiles(
-            lookupPosition,
-            pivotPosition,
-            lookupSquare,
-            pivotSquare
-          ) || somethingMoved;
-        break;
-      }
-    } else if (lookupSquare) {
-      moveTile(lookupPosition, pivotPosition, lookupSquare);
-      somethingMoved = true;
-    }
-  }
-
-  return somethingMoved;
-};
-
-const compareAndMergeTiles = (
-  start: Position,
-  end: Position,
-  fromTile: Tile,
-  toTile: Tile
-): boolean => {
-  if (fromTile.value === toTile.value) {
-    mergeTiles(start, end, fromTile, toTile);
-    return true;
-  }
-  return false;
-};
-
-const mergeTiles = (
-  start: Position,
-  end: Position,
-  fromTile: Tile,
-  toTile: Tile
-): void => {
-  moveTile(start, end, fromTile);
-  delay(() => {
-    removeTile(toTile);
-    fromTile.value *= 2;
-  }, 50);
-};
-
-const moveTile = (start: Position, end: Position, tile: Tile): void => {
-  service.setTileByAxis(model.value, end, tile);
-  service.clearTile(model.value, start);
-};
-
-const removeTile = (tileToRemove: Tile): void => {
-  const indexToRemove = tiles.value.findIndex(
-    (tile) => tile.id === tileToRemove.id
-  );
-
-  if (indexToRemove >= 0) {
-    tileToRemove.style.zIndex = -1;
-    tiles.value.splice(indexToRemove, 1);
+    }, 150);
   }
 };
 
@@ -260,7 +142,6 @@ defineExpose({
       </div>
     </template>
   </div>
-  <div class="message">{{ status }}</div>
 </template>
 
 <style scoped>
@@ -272,15 +153,11 @@ defineExpose({
   width: 75px;
   height: 75px;
   flex: 0 0 auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid #03071e;
   justify-content: center;
   align-items: center;
   display: flex;
-  background-color: #fff9eb;
-}
-
-.message {
-  padding-top: 8px;
+  background-color: #fde9c3;
 }
 .tile {
   position: absolute;

@@ -1,11 +1,29 @@
-import { Axis } from '../types';
-import type { OptionalTile, Position, Tile } from '../types';
-
-import { generateId, getStylePosition, randomize } from '../utils';
+import { Axis, Direction } from '../types';
+import type { MovementConfig, OptionalTile, Position, Tile } from '../types';
+import {
+  changeLoopIndex,
+  continueLoop,
+  delay,
+  generateId,
+  getStart,
+  getStylePosition,
+  randomize,
+} from '../utils';
 
 class GridService {
-  createNewTile = (model: OptionalTile[][], tiles: Tile[]): boolean => {
-    const nextPosition = this.getNextPosition(model);
+  model: OptionalTile[][];
+  tiles: Tile[];
+  size: number;
+
+  constructor(model: OptionalTile[][], tiles: Tile[]) {
+    this.model = model;
+    this.tiles = tiles;
+    this.size = model.length;
+  }
+
+  createNewTile = (): boolean => {
+    this.validateData();
+    const nextPosition = this.getNextPosition(this.model);
 
     if (!nextPosition) {
       return false;
@@ -20,63 +38,49 @@ class GridService {
       style: getStylePosition(x, y),
     };
 
-    tiles.push(newTile);
-    model[x][y] = newTile;
+    this.tiles.push(newTile);
+    this.model[x][y] = newTile;
 
     return true;
   };
 
-  getTileByAxis = (
-    model: OptionalTile[][],
-    position: Position
-  ): OptionalTile => {
-    const { axis, mainAxisIndex, crossAxisIndex } = position;
+  move = (movement: MovementConfig): Promise<boolean> => {
+    this.validateData();
+    const { size } = this;
+    const { direction, axis } = movement;
 
-    switch (axis) {
-      case Axis.X:
-        return model[mainAxisIndex][crossAxisIndex];
-      case Axis.Y:
-        return model[crossAxisIndex][mainAxisIndex];
-      default:
-        throw new Error(`Invalid axis value: "${axis}"`);
-    }
+    return new Promise((resolve) => {
+      let somethingMoved = false;
+
+      // Cross axis pivoting - ci: Cross Axis Index
+      for (let ci: number = 0; ci < size; ci++) {
+        // Main axis pivoting - mi: Main Axis Index
+        const start: number = getStart(direction, size);
+        for (
+          let mi = start;
+          continueLoop(direction, mi, size);
+          mi = changeLoopIndex(direction, mi)
+        ) {
+          const pivotPosition: Position = {
+            axis,
+            mainIndex: mi,
+            crossIndex: ci,
+          };
+
+          somethingMoved =
+            this.lookupAndMove(direction, pivotPosition) || somethingMoved;
+        }
+      }
+
+      resolve(somethingMoved);
+    });
   };
 
-  setTileByAxis = (
-    model: OptionalTile[][],
-    position: Position,
-    tile: Tile
-  ): void => {
-    const { axis, mainAxisIndex, crossAxisIndex } = position;
-
-    switch (axis) {
-      case Axis.X:
-        model[mainAxisIndex][crossAxisIndex] = tile;
-        tile.style = getStylePosition(mainAxisIndex, crossAxisIndex);
-        break;
-      case Axis.Y:
-        model[crossAxisIndex][mainAxisIndex] = tile;
-        tile.style = getStylePosition(crossAxisIndex, mainAxisIndex);
-        break;
-      default:
-        throw new Error(`Invalid axis value: "${axis}"`);
+  private validateData() {
+    if (!this.model || !this.tiles) {
+      throw new Error('Undefined data');
     }
-  };
-
-  clearTile = (model: OptionalTile[][], position: Position): void => {
-    const { axis, mainAxisIndex, crossAxisIndex } = position;
-
-    switch (axis) {
-      case Axis.X:
-        model[mainAxisIndex][crossAxisIndex] = undefined;
-        break;
-      case Axis.Y:
-        model[crossAxisIndex][mainAxisIndex] = undefined;
-        break;
-      default:
-        throw new Error(`Invalid axis value: "${axis}"`);
-    }
-  };
+  }
 
   private getNextPosition = (
     data: OptionalTile[][]
@@ -113,6 +117,136 @@ class GridService {
     }
 
     return availablePositions;
+  };
+
+  private getTileByAxis = (position: Position): OptionalTile => {
+    const { axis, mainIndex, crossIndex } = position;
+
+    switch (axis) {
+      case Axis.X:
+        return this.model[mainIndex][crossIndex];
+      case Axis.Y:
+        return this.model[crossIndex][mainIndex];
+      default:
+        throw new Error(`Invalid axis value: "${axis}"`);
+    }
+  };
+
+  private setTileByAxis = (position: Position, tile: Tile): void => {
+    const { axis, mainIndex, crossIndex } = position;
+
+    switch (axis) {
+      case Axis.X:
+        this.model[mainIndex][crossIndex] = tile;
+        tile.style = getStylePosition(mainIndex, crossIndex);
+        break;
+      case Axis.Y:
+        this.model[crossIndex][mainIndex] = tile;
+        tile.style = getStylePosition(crossIndex, mainIndex);
+        break;
+      default:
+        throw new Error(`Invalid axis value: "${axis}"`);
+    }
+  };
+
+  private clearTile = (position: Position): void => {
+    const { axis, mainIndex, crossIndex } = position;
+
+    switch (axis) {
+      case Axis.X:
+        this.model[mainIndex][crossIndex] = undefined;
+        break;
+      case Axis.Y:
+        this.model[crossIndex][mainIndex] = undefined;
+        break;
+      default:
+        throw new Error(`Invalid axis value: "${axis}"`);
+    }
+  };
+
+  // Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
+  private lookupAndMove = (
+    direction: Direction,
+    pivotPosition: Position
+  ): boolean => {
+    const { size } = this;
+    const { axis, mainIndex: mi, crossIndex: ci } = pivotPosition;
+    let somethingMoved = false;
+    const start: number = changeLoopIndex(direction, mi);
+
+    for (
+      let li = start;
+      continueLoop(direction, li, size, true);
+      li = changeLoopIndex(direction, li)
+    ) {
+      const lookupPosition = {
+        axis,
+        mainIndex: li,
+        crossIndex: ci,
+      };
+      const pivotSquare = this.getTileByAxis(pivotPosition);
+      const lookupSquare = this.getTileByAxis(lookupPosition);
+
+      if (pivotSquare) {
+        if (lookupSquare) {
+          somethingMoved =
+            this.compareAndMergeTiles(
+              lookupPosition,
+              pivotPosition,
+              lookupSquare,
+              pivotSquare
+            ) || somethingMoved;
+          break;
+        }
+      } else if (lookupSquare) {
+        this.moveTile(lookupPosition, pivotPosition, lookupSquare);
+        somethingMoved = true;
+      }
+    }
+
+    return somethingMoved;
+  };
+
+  private compareAndMergeTiles = (
+    start: Position,
+    end: Position,
+    fromTile: Tile,
+    toTile: Tile
+  ): boolean => {
+    if (fromTile.value === toTile.value) {
+      this.mergeTiles(start, end, fromTile, toTile);
+      return true;
+    }
+    return false;
+  };
+
+  private mergeTiles = (
+    start: Position,
+    end: Position,
+    fromTile: Tile,
+    toTile: Tile
+  ): void => {
+    this.moveTile(start, end, fromTile);
+    delay(() => {
+      this.removeTile(toTile);
+      fromTile.value *= 2;
+    }, 50);
+  };
+
+  private moveTile = (start: Position, end: Position, tile: Tile): void => {
+    this.setTileByAxis(end, tile);
+    this.clearTile(start);
+  };
+
+  private removeTile = (tileToRemove: Tile): void => {
+    const indexToRemove = this.tiles.findIndex(
+      (tile) => tile.id === tileToRemove.id
+    );
+
+    if (indexToRemove >= 0) {
+      tileToRemove.style.zIndex = -1;
+      this.tiles.splice(indexToRemove, 1);
+    }
   };
 }
 

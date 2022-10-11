@@ -20,7 +20,6 @@ export const delay = (fn: Function, interval: number) => {
   }, interval);
 };
 
-
 export const getMovementConfig = (command: Command): MovementConfig => {
   switch (command) {
     case Command.ArrowUp:
@@ -59,7 +58,7 @@ export const getStart = (direction: Direction, size: number): number => {
   }
 };
 
-export const isContinueLoop = (
+export const continueLoop = (
   direction: Direction,
   index: number,
   size: number,
