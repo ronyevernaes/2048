@@ -5,7 +5,7 @@ import { useKeypress } from 'vue3-keypress';
 
 import Grid from '../components/Grid.vue';
 
-const size: Ref<number> = ref<number>(6);
+const size: Ref<number> = ref<number>(4);
 const grid = ref<typeof Grid | null>(null);
 
 let moving: boolean = false;
@@ -36,6 +36,7 @@ useKeypress({
 <template>
   <div class="content">
     <h1>Play 2048</h1>
+
     <div class="legend">
       <ul>
         <li>Set your difficulty level, and start to play.</li>
@@ -46,6 +47,7 @@ useKeypress({
       </ul>
       <div>Enjoy!</div>
     </div>
+
     <div class="toolbar">
       <a-radio-group
         button-style="solid"
@@ -54,14 +56,16 @@ useKeypress({
         v-model:value.number="size"
       >
         <a-space>
-          <a-radio-button value="6">Easy</a-radio-button>
-          <a-radio-button value="5">Medium</a-radio-button>
-          <a-radio-button value="4">Hard</a-radio-button>
-          <a-radio-button value="3">Insane</a-radio-button>
+          <a-radio-button :value="6">Easy</a-radio-button>
+          <a-radio-button :value="5">Medium</a-radio-button>
+          <a-radio-button :value="4">Hard</a-radio-button>
+          <a-radio-button :value="3">Insane</a-radio-button>
         </a-space>
       </a-radio-group>
     </div>
+
     <Grid :size="size" ref="grid" />
+
     <a-button type="primary" block size="large" @click="onClickNewGame">
       New Game
     </a-button>

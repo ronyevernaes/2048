@@ -153,7 +153,7 @@ defineExpose({
   width: 75px;
   height: 75px;
   flex: 0 0 auto;
-  border: 1px solid #03071e;
+  border: 0.5px solid #03071e;
   justify-content: center;
   align-items: center;
   display: flex;
@@ -164,7 +164,7 @@ defineExpose({
   transition: transform 100ms;
   width: 75px;
   height: 75px;
-  border: 1px solid var(--color-border);
+  border: 1px solid #03071e;
   justify-content: center;
   align-items: center;
   display: flex;
