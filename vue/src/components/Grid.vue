@@ -61,10 +61,9 @@ const move = async (command: string): Promise<void> => {
   if (somethingMoved) {
     if (status.value === GameStatus.Started && find2048()) {
       status.value = GameStatus.Won;
-      return;
     }
 
-    delay(() => {
+    await delay(() => {
       createNewTile();
 
       if (!existMergeableSquares()) {
@@ -102,15 +101,15 @@ const existMergeableSquares = (): boolean => {
   return false;
 };
 
+const emit = defineEmits(['changeStatus']);
+
 watch(
   () => status.value,
   (val: GameStatus) => {
     switch (val) {
       case GameStatus.Lost:
-        alert('You lost');
-        break;
       case GameStatus.Won:
-        alert('You won');
+        emit('changeStatus', val);
         break;
     }
   }

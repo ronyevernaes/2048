@@ -2,11 +2,18 @@
 import { ref } from 'vue';
 import type { Ref } from 'vue';
 import { useKeypress } from 'vue3-keypress';
+import { Modal } from 'ant-design-vue';
+
+import { GameStatus } from '../types';
 
 import Grid from '../components/Grid.vue';
 
 const size: Ref<number> = ref<number>(4);
 const grid = ref<typeof Grid | null>(null);
+
+const showDialog = ref<boolean>(false);
+const dialogTitle = ref<string>('');
+const dialogMessage = ref<string>('');
 
 let moving: boolean = false;
 
@@ -18,8 +25,33 @@ const onKeyPress = async ({ event }: { event: KeyboardEvent }) => {
   }
 };
 
-const onClickNewGame = () => {
+const restart = (): void => {
   grid.value?.restart();
+}
+
+const onClickNewGame = () => {
+  restart();
+};
+
+const onChangeStatus = (status: GameStatus): void => {
+  switch (status) {
+    case GameStatus.Won:
+      dialogTitle.value = 'Congratulations! =)';
+      dialogMessage.value =
+        "You have won! You can continue playing... Let's see where you get";
+      showDialog.value = true;
+      break;
+    case GameStatus.Lost:
+      dialogTitle.value = 'Ohh! =(';
+      dialogMessage.value =
+        'You have lost! Keep on trying. Practice makes a master';
+      showDialog.value = true;
+      break;
+  }
+};
+
+const onCloseDialog = () => {
+  showDialog.value = false;
 };
 
 useKeypress({
@@ -64,11 +96,22 @@ useKeypress({
       </a-radio-group>
     </div>
 
-    <Grid :size="size" ref="grid" />
+    <Grid :size="size" ref="grid" @change-status="onChangeStatus"/>
 
     <a-button type="primary" block size="large" @click="onClickNewGame">
       New Game
     </a-button>
+
+    <a-modal
+      centered
+      closable
+      v-model:visible="showDialog"
+      :footer="null"
+      :title="dialogTitle"
+      @cancel="onCloseDialog"
+    >
+      {{ dialogMessage }}
+    </a-modal>
   </div>
 </template>
 

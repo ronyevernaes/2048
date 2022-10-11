@@ -13,11 +13,14 @@ export const generateId = (): string => {
   return Date.now().toString();
 };
 
-export const delay = (fn: Function, interval: number) => {
-  const myInterval = setInterval(() => {
-    fn();
-    clearInterval(myInterval);
-  }, interval);
+export const delay = (fn: Function, interval: number): Promise<void> => {
+  return new Promise((resolve) => {
+    const myInterval = setInterval(() => {
+      fn();
+      clearInterval(myInterval);
+      resolve();
+    }, interval);
+  });
 };
 
 export const getMovementConfig = (command: Command): MovementConfig => {
