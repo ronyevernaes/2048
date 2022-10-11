@@ -6,21 +6,21 @@ export default { name: 'GridComponent' };
 import { ref, watch } from 'vue';
 import type { Ref, CSSProperties } from 'vue';
 
+import type { MovementConfig, OptionalTile, Position, Tile } from '../types';
+import { Axis, Command, GameStatus } from '../types';
+import GridService from '../services/GridService';
+
 import {
-  generateId,
+  // generateId,
   delay,
-  getNextPosition,
-  getNextValue,
+  // getNextPosition,
+  // getNextValue,
   getMovementConfig,
   getStart,
   isContinueLoop,
   changeLoopIndex,
   getStylePosition,
 } from '../utils';
-
-import type { MovementConfig, OptionalTile, Tile } from '../types';
-
-import { Axis, Command, GameStatus } from '../types';
 
 const props = defineProps({
   size: {
@@ -34,26 +34,10 @@ const tiles: Ref<Tile[]> = ref([]);
 const status: Ref<GameStatus> = ref(GameStatus.Started);
 const gridStyles: CSSProperties = {};
 
+const service = new GridService();
+
 const createNewSquare = (): boolean => {
-  const nextPosition = getNextPosition(model.value);
-
-  if (!nextPosition) {
-    return false;
-  }
-
-  const [x, y]: [number, number] = nextPosition;
-  const value: number = getNextValue();
-
-  const newTile: Tile = {
-    id: `tile-${generateId()}`,
-    value,
-    style: getStylePosition(x, y),
-  };
-
-  tiles.value.push(newTile);
-  model.value[x][y] = newTile;
-
-  return true;
+  return service.createNewSquare(model.value, tiles.value);
 };
 
 const initModel = (size: number): void => {
@@ -62,7 +46,6 @@ const initModel = (size: number): void => {
 
   for (let i: number = 0; i < size; i++) {
     const row: Tile[] = Array<Tile>(size);
-
     model.value.push(row);
   }
 
@@ -81,11 +64,9 @@ watch(
   }
 );
 
-const getTileByAxis = (
-  axis: Axis,
-  mainAxisIndex: number,
-  crossAxisIndex: number
-): OptionalTile => {
+const getTileByAxis = (position: Position): OptionalTile => {
+  const { axis, mainAxisIndex, crossAxisIndex } = position;
+
   switch (axis) {
     case Axis.X:
       return model.value[mainAxisIndex][crossAxisIndex];
@@ -96,12 +77,9 @@ const getTileByAxis = (
   }
 };
 
-const setTileByAxis = (
-  axis: Axis,
-  mainAxisIndex: number,
-  crossAxisIndex: number,
-  tile: Tile
-): void => {
+const setTileByAxis = (position: Position, tile: Tile): void => {
+  const { axis, mainAxisIndex, crossAxisIndex } = position;
+
   switch (axis) {
     case Axis.X:
       model.value[mainAxisIndex][crossAxisIndex] = tile;
@@ -138,28 +116,33 @@ const move = (command: string): Promise<void> => {
           isContinueLoop(direction, li, size, true);
           li = changeLoopIndex(direction, li)
         ) {
-          const pivotSquare = getTileByAxis(axis, mi, ci);
-          const lookupSquare = getTileByAxis(axis, li, ci);
+          const pivotPosition: Position = {
+            axis,
+            mainAxisIndex: mi,
+            crossAxisIndex: ci,
+          };
+          const lookupPosition = {
+            axis,
+            mainAxisIndex: li,
+            crossAxisIndex: ci,
+          };
+          const pivotSquare = getTileByAxis(pivotPosition);
+          const lookupSquare = getTileByAxis(lookupPosition);
 
           if (pivotSquare) {
             if (lookupSquare) {
-              if (lookupSquare.value === pivotSquare.value) {
-                setTileByAxis(axis, mi, ci, lookupSquare);
-                clearTile(axis, li, ci);
-                delay(() => {
-                  removeTile(pivotSquare);
-                  lookupSquare.value *= 2;
-                }, 50);
-                somethingMoved = true;
-              }
+              somethingMoved =
+                compareAndMergeTiles(
+                  lookupPosition,
+                  pivotPosition,
+                  lookupSquare,
+                  pivotSquare
+                ) || somethingMoved;
               break;
             }
-          } else {
-            if (lookupSquare) {
-              setTileByAxis(axis, mi, ci, lookupSquare);
-              clearTile(axis, li, ci);
-              somethingMoved = true;
-            }
+          } else if (lookupSquare) {
+            moveTile(lookupPosition, pivotPosition, lookupSquare);
+            somethingMoved = true;
           }
         }
       }
@@ -185,6 +168,37 @@ const move = (command: string): Promise<void> => {
   });
 };
 
+const compareAndMergeTiles = (
+  start: Position,
+  end: Position,
+  fromTile: Tile,
+  toTile: Tile
+): boolean => {
+  if (fromTile.value === toTile.value) {
+    mergeTiles(start, end, fromTile, toTile);
+    return true;
+  }
+  return false;
+};
+
+const mergeTiles = (
+  start: Position,
+  end: Position,
+  fromTile: Tile,
+  toTile: Tile
+): void => {
+  moveTile(start, end, fromTile);
+  delay(() => {
+    removeTile(toTile);
+    fromTile.value *= 2;
+  }, 50);
+};
+
+const moveTile = (start: Position, end: Position, tile: Tile): void => {
+  setTileByAxis(end, tile);
+  clearTile(start);
+};
+
 const removeTile = (tileToRemove: Tile): void => {
   const indexToRemove = tiles.value.findIndex(
     (tile) => tile.id === tileToRemove.id
@@ -196,11 +210,9 @@ const removeTile = (tileToRemove: Tile): void => {
   }
 };
 
-const clearTile = (
-  axis: Axis,
-  mainAxisIndex: number,
-  crossAxisIndex: number
-): void => {
+const clearTile = (position: Position): void => {
+  const { axis, mainAxisIndex, crossAxisIndex } = position;
+
   switch (axis) {
     case Axis.X:
       model.value[mainAxisIndex][crossAxisIndex] = undefined;

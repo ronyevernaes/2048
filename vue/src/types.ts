@@ -34,3 +34,9 @@ export enum GameStatus {
   Won = 'Won',
   Lost = 'Lost',
 }
+
+export interface Position {
+  axis: Axis;
+  mainAxisIndex: number;
+  crossAxisIndex: number;
+}
