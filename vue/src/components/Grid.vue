@@ -7,14 +7,11 @@ import { ref, watch } from 'vue';
 import type { Ref, CSSProperties } from 'vue';
 
 import type { MovementConfig, OptionalTile, Position, Tile } from '../types';
-import { Axis, Command, GameStatus } from '../types';
+import { Axis, Command, Direction, GameStatus } from '../types';
 import GridService from '../services/GridService';
 
 import {
-  // generateId,
   delay,
-  // getNextPosition,
-  // getNextValue,
   getMovementConfig,
   getStart,
   isContinueLoop,
@@ -36,8 +33,8 @@ const gridStyles: CSSProperties = {};
 
 const service = new GridService();
 
-const createNewSquare = (): boolean => {
-  return service.createNewSquare(model.value, tiles.value);
+const createNewTile = (): boolean => {
+  return service.createNewTile(model.value, tiles.value);
 };
 
 const initModel = (size: number): void => {
@@ -52,7 +49,7 @@ const initModel = (size: number): void => {
   gridStyles.gridTemplateRows = `repeat(${size}, 1fr)`;
   gridStyles.gridTemplateColumns = `repeat(${size}, 1fr)`;
 
-  createNewSquare();
+  createNewTile();
 };
 
 initModel(props.size);
@@ -63,36 +60,6 @@ watch(
     initModel(val);
   }
 );
-
-const getTileByAxis = (position: Position): OptionalTile => {
-  const { axis, mainAxisIndex, crossAxisIndex } = position;
-
-  switch (axis) {
-    case Axis.X:
-      return model.value[mainAxisIndex][crossAxisIndex];
-    case Axis.Y:
-      return model.value[crossAxisIndex][mainAxisIndex];
-    default:
-      throw new Error(`Invalid axis value: "${axis}"`);
-  }
-};
-
-const setTileByAxis = (position: Position, tile: Tile): void => {
-  const { axis, mainAxisIndex, crossAxisIndex } = position;
-
-  switch (axis) {
-    case Axis.X:
-      model.value[mainAxisIndex][crossAxisIndex] = tile;
-      tile.style = getStylePosition(mainAxisIndex, crossAxisIndex);
-      break;
-    case Axis.Y:
-      model.value[crossAxisIndex][mainAxisIndex] = tile;
-      tile.style = getStylePosition(crossAxisIndex, mainAxisIndex);
-      break;
-    default:
-      throw new Error(`Invalid axis value: "${axis}"`);
-  }
-};
 
 const move = (command: string): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -110,41 +77,14 @@ const move = (command: string): Promise<void> => {
         isContinueLoop(direction, mi, size);
         mi = changeLoopIndex(direction, mi)
       ) {
-        // Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
-        for (
-          let li: number = changeLoopIndex(direction, mi);
-          isContinueLoop(direction, li, size, true);
-          li = changeLoopIndex(direction, li)
-        ) {
-          const pivotPosition: Position = {
-            axis,
-            mainAxisIndex: mi,
-            crossAxisIndex: ci,
-          };
-          const lookupPosition = {
-            axis,
-            mainAxisIndex: li,
-            crossAxisIndex: ci,
-          };
-          const pivotSquare = getTileByAxis(pivotPosition);
-          const lookupSquare = getTileByAxis(lookupPosition);
+        const pivotPosition: Position = {
+          axis,
+          mainAxisIndex: mi,
+          crossAxisIndex: ci,
+        };
 
-          if (pivotSquare) {
-            if (lookupSquare) {
-              somethingMoved =
-                compareAndMergeTiles(
-                  lookupPosition,
-                  pivotPosition,
-                  lookupSquare,
-                  pivotSquare
-                ) || somethingMoved;
-              break;
-            }
-          } else if (lookupSquare) {
-            moveTile(lookupPosition, pivotPosition, lookupSquare);
-            somethingMoved = true;
-          }
-        }
+        somethingMoved =
+          lookupAndMove(direction, pivotPosition) || somethingMoved;
       }
     }
 
@@ -155,7 +95,7 @@ const move = (command: string): Promise<void> => {
       }
 
       delay(() => {
-        createNewSquare();
+        createNewTile();
 
         if (!existMergeableSquares()) {
           status.value = GameStatus.Lost;
@@ -166,6 +106,48 @@ const move = (command: string): Promise<void> => {
       resolve();
     }
   });
+};
+
+// Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
+const lookupAndMove = (
+  direction: Direction,
+  pivotPosition: Position
+): boolean => {
+  const { axis, mainAxisIndex: mi, crossAxisIndex: ci } = pivotPosition;
+  let somethingMoved = false;
+  const start: number = changeLoopIndex(direction, mi);
+
+  for (
+    let li = start;
+    isContinueLoop(direction, li, props.size, true);
+    li = changeLoopIndex(direction, li)
+  ) {
+    const lookupPosition = {
+      axis,
+      mainAxisIndex: li,
+      crossAxisIndex: ci,
+    };
+    const pivotSquare = service.getTileByAxis(model.value, pivotPosition);
+    const lookupSquare = service.getTileByAxis(model.value, lookupPosition);
+
+    if (pivotSquare) {
+      if (lookupSquare) {
+        somethingMoved =
+          compareAndMergeTiles(
+            lookupPosition,
+            pivotPosition,
+            lookupSquare,
+            pivotSquare
+          ) || somethingMoved;
+        break;
+      }
+    } else if (lookupSquare) {
+      moveTile(lookupPosition, pivotPosition, lookupSquare);
+      somethingMoved = true;
+    }
+  }
+
+  return somethingMoved;
 };
 
 const compareAndMergeTiles = (
@@ -195,8 +177,8 @@ const mergeTiles = (
 };
 
 const moveTile = (start: Position, end: Position, tile: Tile): void => {
-  setTileByAxis(end, tile);
-  clearTile(start);
+  service.setTileByAxis(model.value, end, tile);
+  service.clearTile(model.value, start);
 };
 
 const removeTile = (tileToRemove: Tile): void => {
@@ -207,21 +189,6 @@ const removeTile = (tileToRemove: Tile): void => {
   if (indexToRemove >= 0) {
     tileToRemove.style.zIndex = -1;
     tiles.value.splice(indexToRemove, 1);
-  }
-};
-
-const clearTile = (position: Position): void => {
-  const { axis, mainAxisIndex, crossAxisIndex } = position;
-
-  switch (axis) {
-    case Axis.X:
-      model.value[mainAxisIndex][crossAxisIndex] = undefined;
-      break;
-    case Axis.Y:
-      model.value[crossAxisIndex][mainAxisIndex] = undefined;
-      break;
-    default:
-      throw new Error(`Invalid axis value: "${axis}"`);
   }
 };
 

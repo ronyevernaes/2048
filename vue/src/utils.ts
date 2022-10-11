@@ -2,25 +2,11 @@ import type { CSSProperties } from 'vue';
 import { Axis, Command, Direction } from './types';
 import type { MovementConfig, OptionalTile } from './types';
 
-const randomize = (max: number): number => {
+export const randomize = (max: number): number => {
   const { floor, random } = Math;
   const result = floor(random() * max);
 
   return result;
-};
-
-const getAvailablePositions = (data: OptionalTile[][]): string[] => {
-  const availablePositions: string[] = [];
-
-  for (let i = 0; i < data.length; i++) {
-    for (let j = 0; j < data[i].length; j++) {
-      if (!data[i][j]) {
-        availablePositions.push(`${i}:${j}`);
-      }
-    }
-  }
-
-  return availablePositions;
 };
 
 export const generateId = (): string => {
@@ -34,28 +20,6 @@ export const delay = (fn: Function, interval: number) => {
   }, interval);
 };
 
-export const getNextPosition = (
-  data: OptionalTile[][]
-): [number, number] | false => {
-  const availablePositions: string[] = getAvailablePositions(data);
-
-  const index: number = randomize(availablePositions.length);
-  const positionStr: string = availablePositions[index];
-
-  if (!positionStr) {
-    return false;
-  }
-
-  const coordinates: string[] = positionStr.split(':');
-  return [parseInt(coordinates[0]), parseInt(coordinates[1])];
-};
-
-export const getNextValue = (): number => {
-  const initialSquareValues: number[] = [1];
-  const index: number = randomize(initialSquareValues.length);
-
-  return initialSquareValues[index];
-};
 
 export const getMovementConfig = (command: Command): MovementConfig => {
   switch (command) {
