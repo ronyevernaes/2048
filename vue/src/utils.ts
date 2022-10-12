@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'vue';
 import { Axis, Command, Direction } from './types';
-import type { MovementConfig, OptionalTile } from './types';
+import type { MovementConfig } from './types';
 
 export const randomize = (max: number): number => {
   const { floor, random } = Math;

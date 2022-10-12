@@ -1,5 +1,5 @@
 <script lang="ts">
-export default { name: 'SquareComponent' };
+export default { name: 'TileComponent' };
 </script>
 
 <script setup lang="ts">
@@ -12,19 +12,22 @@ defineProps({
 </script>
 
 <template>
-  <div class="square">
-    <!-- <h1>{{ value !== 0 ? value : '' }}</h1> -->
+  <div class="tile">
+    <h2>{{ !!value || value !== 0 ? value : '' }}</h2>
   </div>
 </template>
 
 <style scoped>
-.square {
+.tile {
+  position: absolute;
+  transition: transform 100ms;
   width: 75px;
   height: 75px;
-  flex: 0 0 auto;
-  border: 1px solid var(--color-border);
+  border: 1px solid #03071e;
   justify-content: center;
   align-items: center;
   display: flex;
+  flex-direction: column;
+  z-index: 0;
 }
 </style>

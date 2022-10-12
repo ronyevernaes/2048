@@ -31,6 +31,7 @@ const createNewTile = (): boolean => {
 };
 
 const initModel = (size: number): void => {
+  status.value = GameStatus.Started;
   model.value = Array<OptionalTile[]>();
   tiles.value = Array<Tile>();
 
@@ -75,7 +76,7 @@ const move = async (command: string): Promise<void> => {
 
 const find2048 = (): boolean => {
   return !!model.value.find(
-    (row) => !!row.find((square: OptionalTile) => square?.value === 2048)
+    (row) => !!row.find((tile: OptionalTile) => tile?.value === 2048)
   );
 };
 
@@ -122,11 +123,7 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    class="grid"
-    v-if="size && model && model.length > 0"
-    :style="gridStyles"
-  >
+  <div class="grid" v-if="size" :style="gridStyles">
     <template v-for="row in size" :key="`grid-row-${row}`">
       <div
         v-for="col in size"
@@ -137,7 +134,7 @@ defineExpose({
 
     <template v-for="tile in tiles" :key="tile.id">
       <div class="tile" :class="`tile-${tile.value}`" :style="tile.style">
-        <h1>{{ tile.value }}</h1>
+        <h2>{{ tile.value }}</h2>
       </div>
     </template>
   </div>

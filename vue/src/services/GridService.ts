@@ -44,36 +44,35 @@ class GridService {
     return true;
   };
 
-  move = (movement: MovementConfig): Promise<boolean> => {
+  move = async (movement: MovementConfig): Promise<boolean> => {
     this.validateData();
     const { size } = this;
     const { direction, axis } = movement;
 
-    return new Promise((resolve) => {
-      let somethingMoved = false;
+    let somethingMoved = false;
 
-      // Cross axis pivoting - ci: Cross Axis Index
-      for (let ci: number = 0; ci < size; ci++) {
-        // Main axis pivoting - mi: Main Axis Index
-        const start: number = getStart(direction, size);
-        for (
-          let mi = start;
-          continueLoop(direction, mi, size);
-          mi = changeLoopIndex(direction, mi)
-        ) {
-          const pivotPosition: Position = {
-            axis,
-            mainIndex: mi,
-            crossIndex: ci,
-          };
+    // Cross axis pivoting - ci: Cross Axis Index
+    for (let ci: number = 0; ci < size; ci++) {
+      // Main axis pivoting - mi: Main Axis Index
+      const start: number = getStart(direction, size);
+      for (
+        let mi = start;
+        continueLoop(direction, mi, size);
+        mi = changeLoopIndex(direction, mi)
+      ) {
+        const pivotPosition: Position = {
+          axis,
+          mainIndex: mi,
+          crossIndex: ci,
+        };
 
-          somethingMoved =
-            this.lookupAndMove(direction, pivotPosition) || somethingMoved;
-        }
+        somethingMoved =
+          (await this.lookupAndMove(direction, pivotPosition)) ||
+          somethingMoved;
       }
+    }
 
-      resolve(somethingMoved);
-    });
+    return somethingMoved;
   };
 
   private validateData() {
@@ -99,10 +98,11 @@ class GridService {
   };
 
   private getNextValue = (): number => {
-    const initialSquareValues: number[] = [1];
-    const index: number = randomize(initialSquareValues.length);
+    // Here you can add the values which a tile can be initialized
+    const initialTileValues: number[] = [1];
+    const index: number = randomize(initialTileValues.length);
 
-    return initialSquareValues[index];
+    return initialTileValues[index];
   };
 
   private getAvailablePositions = (data: OptionalTile[][]): string[] => {
@@ -165,10 +165,10 @@ class GridService {
   };
 
   // Lookup the square to move through the main axis - li: Lookup Index (assigned to the main axis)
-  private lookupAndMove = (
+  private lookupAndMove = async (
     direction: Direction,
     pivotPosition: Position
-  ): boolean => {
+  ): Promise<boolean> => {
     const { size } = this;
     const { axis, mainIndex: mi, crossIndex: ci } = pivotPosition;
     let somethingMoved = false;
@@ -190,12 +190,12 @@ class GridService {
       if (pivotSquare) {
         if (lookupSquare) {
           somethingMoved =
-            this.compareAndMergeTiles(
+            (await this.compareAndMergeTiles(
               lookupPosition,
               pivotPosition,
               lookupSquare,
               pivotSquare
-            ) || somethingMoved;
+            )) || somethingMoved;
           break;
         }
       } else if (lookupSquare) {
@@ -207,27 +207,27 @@ class GridService {
     return somethingMoved;
   };
 
-  private compareAndMergeTiles = (
+  private compareAndMergeTiles = async (
     start: Position,
     end: Position,
     fromTile: Tile,
     toTile: Tile
-  ): boolean => {
+  ): Promise<boolean> => {
     if (fromTile.value === toTile.value) {
-      this.mergeTiles(start, end, fromTile, toTile);
+      await this.mergeTiles(start, end, fromTile, toTile);
       return true;
     }
     return false;
   };
 
-  private mergeTiles = (
+  private mergeTiles = async (
     start: Position,
     end: Position,
     fromTile: Tile,
     toTile: Tile
-  ): void => {
+  ): Promise<void> => {
     this.moveTile(start, end, fromTile);
-    delay(() => {
+    await delay(() => {
       this.removeTile(toTile);
       fromTile.value *= 2;
     }, 50);

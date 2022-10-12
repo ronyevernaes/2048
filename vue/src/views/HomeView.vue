@@ -2,18 +2,15 @@
 import { ref } from 'vue';
 import type { Ref } from 'vue';
 import { useKeypress } from 'vue3-keypress';
-import { Modal } from 'ant-design-vue';
 
 import { GameStatus } from '../types';
 
 import Grid from '../components/Grid.vue';
+import Modal from '../components/Modal.vue';
 
 const size: Ref<number> = ref<number>(4);
 const grid = ref<typeof Grid | null>(null);
-
-const showDialog = ref<boolean>(false);
-const dialogTitle = ref<string>('');
-const dialogMessage = ref<string>('');
+const status: Ref<GameStatus> = ref<GameStatus>(GameStatus.Started);
 
 let moving: boolean = false;
 
@@ -27,31 +24,20 @@ const onKeyPress = async ({ event }: { event: KeyboardEvent }) => {
 
 const restart = (): void => {
   grid.value?.restart();
-}
+};
 
 const onClickNewGame = () => {
   restart();
 };
 
-const onChangeStatus = (status: GameStatus): void => {
-  switch (status) {
-    case GameStatus.Won:
-      dialogTitle.value = 'Congratulations! =)';
-      dialogMessage.value =
-        "You have won! You can continue playing... Let's see where you get";
-      showDialog.value = true;
-      break;
-    case GameStatus.Lost:
-      dialogTitle.value = 'Ohh! =(';
-      dialogMessage.value =
-        'You have lost! Keep on trying. Practice makes a master';
-      showDialog.value = true;
-      break;
-  }
+const onChangeStatus = (newStatus: GameStatus): void => {
+  status.value = newStatus;
 };
 
-const onCloseDialog = () => {
-  showDialog.value = false;
+const onCancelModal = (): void => {
+  if (status.value === GameStatus.Lost) {
+    restart();
+  }
 };
 
 useKeypress({
@@ -96,28 +82,19 @@ useKeypress({
       </a-radio-group>
     </div>
 
-    <Grid :size="size" ref="grid" @change-status="onChangeStatus"/>
+    <Grid :size="size" ref="grid" @change-status="onChangeStatus" />
 
     <a-button type="primary" block size="large" @click="onClickNewGame">
       New Game
     </a-button>
 
-    <a-modal
-      centered
-      closable
-      v-model:visible="showDialog"
-      :footer="null"
-      :title="dialogTitle"
-      @cancel="onCloseDialog"
-    >
-      {{ dialogMessage }}
-    </a-modal>
+    <Modal :status="status" @cancel="onCancelModal" />
   </div>
 </template>
 
 <style scoped>
 .content {
-  width: 400px;
+  width: 380px;
   display: flex;
   justify-content: center;
   align-items: center;
