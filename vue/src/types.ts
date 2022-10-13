@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'vue';
 export interface Tile {
   id: string;
   value: number;
-  style: CSSProperties;
+  x: number;
+  y: number;
 }
 
 export type OptionalTile = Tile | undefined;

@@ -6,7 +6,6 @@ import {
   delay,
   generateId,
   getStart,
-  getStylePosition,
   randomize,
 } from '../utils';
 
@@ -35,7 +34,8 @@ class GridService {
     const newTile: Tile = {
       id: `tile-${generateId()}`,
       value,
-      style: getStylePosition(x, y),
+      x,
+      y,
     };
 
     this.tiles.push(newTile);
@@ -138,11 +138,13 @@ class GridService {
     switch (axis) {
       case Axis.X:
         this.positions[mainIndex][crossIndex] = tile;
-        tile.style = getStylePosition(mainIndex, crossIndex);
+        tile.x = mainIndex;
+        tile.y = crossIndex;
         break;
       case Axis.Y:
         this.positions[crossIndex][mainIndex] = tile;
-        tile.style = getStylePosition(crossIndex, mainIndex);
+        tile.x = crossIndex;
+        tile.y = mainIndex;
         break;
       default:
         throw new Error(`Invalid axis value: "${axis}"`);
@@ -244,7 +246,6 @@ class GridService {
     );
 
     if (indexToRemove >= 0) {
-      tileToRemove.style.zIndex = -1;
       this.tiles.splice(indexToRemove, 1);
     }
   };

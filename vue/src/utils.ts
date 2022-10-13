@@ -92,9 +92,3 @@ export const changeLoopIndex = (
       throw new Error(`Invalid movement config direction: ${direction}`);
   }
 };
-
-export const getStylePosition = (x: number, y: number): CSSProperties => {
-  return {
-    transform: `translate(${75 * x}px, ${75 * y}px)`,
-  };
-};

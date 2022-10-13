@@ -3,7 +3,7 @@ export default { name: 'TileComponent' };
 </script>
 
 <script setup lang="ts">
-import type { PropType } from 'vue';
+import type { CSSProperties, PropType } from 'vue';
 
 import type { Tile } from '../types';
 
@@ -13,10 +13,20 @@ defineProps({
     required: true,
   },
 });
+
+const getStylePosition = (x: number, y: number): CSSProperties => {
+  return {
+    transform: `translate(${75 * x}px, ${75 * y}px)`,
+  };
+};
 </script>
 
 <template>
-  <div class="tile" :class="`tile-${data.value}`" :style="data.style">
+  <div
+    class="tile"
+    :class="`tile-${data.value}`"
+    :style="getStylePosition(data.x, data.y)"
+  >
     <h2>{{ !!data.value || data.value !== 0 ? data.value : '' }}</h2>
   </div>
 </template>
