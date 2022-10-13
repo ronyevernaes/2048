@@ -19,8 +19,8 @@ const show = ref<boolean>(false);
 const title = ref<string>('');
 const message = ref<string>('');
 
-const onChangeStatus = (status: GameStatus): void => {
-  switch (status) {
+const onChangeStatus = (): void => {
+  switch (props.status) {
     case GameStatus.Won:
       title.value = 'Congratulations! =)';
       message.value =
@@ -45,7 +45,7 @@ const onCancel = (): void => {
 
 watch(
   () => props.status,
-  (val) => onChangeStatus(val as GameStatus),
+  () => onChangeStatus(),
   {
     deep: true,
   }

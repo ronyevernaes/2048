@@ -107,12 +107,7 @@ const emit = defineEmits(['changeStatus']);
 watch(
   () => status.value,
   (val: GameStatus) => {
-    switch (val) {
-      case GameStatus.Lost:
-      case GameStatus.Won:
-        emit('changeStatus', val);
-        break;
-    }
+    emit('changeStatus', val);
   }
 );
 
