@@ -1,5 +1,13 @@
 import { Axis, Direction } from '../types';
-import type { MovementConfig, OptionalTile, Position, Tile } from '../types';
+
+import type {
+  MovementConfig,
+  OptionalTile,
+  Position,
+  Tile,
+  TileGenerationOpts,
+} from '../types';
+
 import {
   changeLoopIndex,
   continueLoop,
@@ -13,11 +21,17 @@ class GridService {
   positions: OptionalTile[][];
   tiles: Tile[];
   size: number;
+  opts: TileGenerationOpts;
 
-  constructor(positions: OptionalTile[][], tiles: Tile[]) {
+  constructor(
+    positions: OptionalTile[][],
+    tiles: Tile[],
+    opts?: TileGenerationOpts
+  ) {
     this.positions = positions;
     this.tiles = tiles;
     this.size = positions.length;
+    this.opts = opts ? opts : { firstTile: 2, values: [1] };
   }
 
   createNewTile = (): boolean => {
@@ -29,7 +43,7 @@ class GridService {
     }
 
     const [x, y]: [number, number] = nextPosition;
-    const value: number = this.getNextValue();
+    const value: number = this.getNextValue(this.tiles.length === 0);
 
     const newTile: Tile = {
       id: `tile-${generateId()}`,
@@ -97,12 +111,15 @@ class GridService {
     return [parseInt(coordinates[0]), parseInt(coordinates[1])];
   };
 
-  private getNextValue = (): number => {
+  private getNextValue = (isFirstValue: boolean): number => {
     // Here you can add the values which a tile can be initialized
-    const initialTileValues: number[] = [1];
-    const index: number = randomize(initialTileValues.length);
+    if (isFirstValue && this.opts.firstTile) {
+      return this.opts.firstTile;
+    }
 
-    return initialTileValues[index];
+    const index: number = randomize(this.opts.values.length);
+
+    return this.opts.values[index];
   };
 
   private getAvailablePositions = (data: OptionalTile[][]): string[] => {

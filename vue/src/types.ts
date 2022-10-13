@@ -40,3 +40,8 @@ export interface Position {
   mainIndex: number;
   crossIndex: number;
 }
+
+export interface TileGenerationOpts {
+  firstTile?: number;
+  values: number[];
+}
