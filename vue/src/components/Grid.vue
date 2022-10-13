@@ -8,9 +8,11 @@ import type { Ref, CSSProperties } from 'vue';
 
 import type { MovementConfig, OptionalTile, Tile } from '../types';
 import { Command, GameStatus } from '../types';
+import { delay, getMovementConfig } from '../utils';
 import GridService from '../services/GridService';
 
-import { delay, getMovementConfig } from '../utils';
+import TileComponent from './Tile.vue';
+
 
 const props = defineProps({
   size: {
@@ -19,7 +21,7 @@ const props = defineProps({
   },
 });
 
-const model: Ref<OptionalTile[][]> = ref([]);
+const positions: Ref<OptionalTile[][]> = ref([]);
 const tiles: Ref<Tile[]> = ref([]);
 const status: Ref<GameStatus> = ref(GameStatus.Started);
 const gridStyles: Ref<CSSProperties> = ref({});
@@ -30,29 +32,29 @@ const createNewTile = (): boolean => {
   return service.createNewTile();
 };
 
-const initModel = (size: number): void => {
+const init = (size: number): void => {
   status.value = GameStatus.Started;
-  model.value = Array<OptionalTile[]>();
+  positions.value = Array<OptionalTile[]>();
   tiles.value = Array<Tile>();
 
   for (let i: number = 0; i < size; i++) {
     const row: Tile[] = Array<Tile>(size);
-    model.value.push(row);
+    positions.value.push(row);
   }
 
   gridStyles.value.gridTemplateRows = `repeat(${size}, 1fr)`;
   gridStyles.value.gridTemplateColumns = `repeat(${size}, 1fr)`;
 
-  service = new GridService(model.value, tiles.value);
+  service = new GridService(positions.value, tiles.value);
 
   createNewTile();
 };
 
-initModel(props.size);
+init(props.size);
 
 watch(
   () => props.size,
-  (val: number) => initModel(val)
+  (val: number) => init(val)
 );
 
 const move = async (command: string): Promise<void> => {
@@ -75,7 +77,7 @@ const move = async (command: string): Promise<void> => {
 };
 
 const find2048 = (): boolean => {
-  return !!model.value.find(
+  return !!positions.value.find(
     (row) => !!row.find((tile: OptionalTile) => tile?.value === 2048)
   );
 };
@@ -87,13 +89,13 @@ const existMergeableSquares = (): boolean => {
     for (let j = 0; j < size; j++) {
       // compares [i, j] with [i + 1, j], [i, j + 1], [i - 1, j], [i, j - 1]
       if (
-        !model.value[i][j] ||
+        !positions.value[i][j] ||
         (i < size - 1 &&
-          (model.value[i][j]?.value === model.value[i + 1][j]?.value ||
-            model.value[i][j]?.value === model.value[i][j + 1]?.value)) ||
+          (positions.value[i][j]?.value === positions.value[i + 1][j]?.value ||
+            positions.value[i][j]?.value === positions.value[i][j + 1]?.value)) ||
         (i > 0 &&
-          (model.value[i][j]?.value === model.value[i - 1][j]?.value ||
-            model.value[i][j]?.value === model.value[i][j - 1]?.value))
+          (positions.value[i][j]?.value === positions.value[i - 1][j]?.value ||
+            positions.value[i][j]?.value === positions.value[i][j - 1]?.value))
       ) {
         return true;
       }
@@ -113,7 +115,7 @@ watch(
 
 defineExpose({
   move,
-  restart: () => initModel(props.size),
+  restart: () => init(props.size),
 });
 </script>
 
@@ -128,9 +130,7 @@ defineExpose({
     </template>
 
     <template v-for="tile in tiles" :key="tile.id">
-      <div class="tile" :class="`tile-${tile.value}`" :style="tile.style">
-        <h2>{{ tile.value }}</h2>
-      </div>
+      <TileComponent :data="tile" />
     </template>
   </div>
 </template>
@@ -149,69 +149,5 @@ defineExpose({
   align-items: center;
   display: flex;
   background-color: #fde9c3;
-}
-.tile {
-  position: absolute;
-  transition: transform 100ms;
-  width: 75px;
-  height: 75px;
-  border: 1px solid #03071e;
-  justify-content: center;
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  z-index: 0;
-}
-.new-tile {
-  width: 75px;
-  height: 75px;
-}
-.tile-1 {
-  background-color: #ffba08;
-  color: black;
-}
-.tile-2 {
-  background-color: #ffba08;
-  color: black;
-}
-.tile-4 {
-  background-color: #faa307;
-  color: black;
-}
-.tile-8 {
-  background-color: #faa307;
-  color: black;
-}
-.tile-16 {
-  background-color: #f48c06;
-  color: white;
-}
-.tile-32 {
-  background-color: #e85d04;
-  color: white;
-}
-.tile-64 {
-  background-color: #dc2f02;
-  color: white;
-}
-.tile-128 {
-  background-color: #d00000;
-  color: white;
-}
-.tile-256 {
-  background-color: #9d0208;
-  color: white;
-}
-.tile-512 {
-  background-color: #6a040f;
-  color: white;
-}
-.tile-1024 {
-  background-color: #370617;
-  color: white;
-}
-.tile-2048 {
-  background-color: #03071e;
-  color: white;
 }
 </style>

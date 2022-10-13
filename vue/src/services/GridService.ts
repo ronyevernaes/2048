@@ -11,19 +11,19 @@ import {
 } from '../utils';
 
 class GridService {
-  model: OptionalTile[][];
+  positions: OptionalTile[][];
   tiles: Tile[];
   size: number;
 
-  constructor(model: OptionalTile[][], tiles: Tile[]) {
-    this.model = model;
+  constructor(positions: OptionalTile[][], tiles: Tile[]) {
+    this.positions = positions;
     this.tiles = tiles;
-    this.size = model.length;
+    this.size = positions.length;
   }
 
   createNewTile = (): boolean => {
     this.validateData();
-    const nextPosition = this.getNextPosition(this.model);
+    const nextPosition = this.getNextPosition(this.positions);
 
     if (!nextPosition) {
       return false;
@@ -39,7 +39,7 @@ class GridService {
     };
 
     this.tiles.push(newTile);
-    this.model[x][y] = newTile;
+    this.positions[x][y] = newTile;
 
     return true;
   };
@@ -76,7 +76,7 @@ class GridService {
   };
 
   private validateData() {
-    if (!this.model || !this.tiles) {
+    if (!this.positions || !this.tiles) {
       throw new Error('Undefined data');
     }
   }
@@ -124,9 +124,9 @@ class GridService {
 
     switch (axis) {
       case Axis.X:
-        return this.model[mainIndex][crossIndex];
+        return this.positions[mainIndex][crossIndex];
       case Axis.Y:
-        return this.model[crossIndex][mainIndex];
+        return this.positions[crossIndex][mainIndex];
       default:
         throw new Error(`Invalid axis value: "${axis}"`);
     }
@@ -137,11 +137,11 @@ class GridService {
 
     switch (axis) {
       case Axis.X:
-        this.model[mainIndex][crossIndex] = tile;
+        this.positions[mainIndex][crossIndex] = tile;
         tile.style = getStylePosition(mainIndex, crossIndex);
         break;
       case Axis.Y:
-        this.model[crossIndex][mainIndex] = tile;
+        this.positions[crossIndex][mainIndex] = tile;
         tile.style = getStylePosition(crossIndex, mainIndex);
         break;
       default:
@@ -154,10 +154,10 @@ class GridService {
 
     switch (axis) {
       case Axis.X:
-        this.model[mainIndex][crossIndex] = undefined;
+        this.positions[mainIndex][crossIndex] = undefined;
         break;
       case Axis.Y:
-        this.model[crossIndex][mainIndex] = undefined;
+        this.positions[crossIndex][mainIndex] = undefined;
         break;
       default:
         throw new Error(`Invalid axis value: "${axis}"`);
