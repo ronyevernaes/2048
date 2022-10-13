@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'vue';
 import { Axis, Command, Direction } from './types';
 import type { MovementConfig } from './types';
 

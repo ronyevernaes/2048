@@ -10,7 +10,7 @@ import { GameStatus } from '../types';
 
 const props = defineProps({
   status: {
-    type: Object as PropType<GameStatus>,
+    type: String as PropType<GameStatus>,
     required: false,
   },
 });
@@ -45,10 +45,7 @@ const onCancel = (): void => {
 
 watch(
   () => props.status,
-  () => onChangeStatus(),
-  {
-    deep: true,
-  }
+  () => onChangeStatus()
 );
 </script>
 
