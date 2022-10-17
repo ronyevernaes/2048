@@ -13,7 +13,6 @@ import GridService from '../services/GridService';
 
 import TileComponent from './Tile.vue';
 
-
 const props = defineProps({
   size: {
     type: Number,
