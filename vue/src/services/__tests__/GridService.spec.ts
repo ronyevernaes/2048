@@ -1,5 +1,6 @@
 import type { OptionalTile, Tile } from '@/types';
 import { Axis, Direction } from '@/types';
+import { create } from 'domain';
 import { describe, expect, it } from 'vitest';
 import GridService from '../GridService';
 
@@ -14,7 +15,7 @@ describe('GridService', () => {
     const tiles: Tile[] = [];
     const service = new GridService(positions, tiles);
 
-    service.createNewTile();
+    const created = service.createNewTile();
 
     const count = positions.reduce((rowCount, currentRow) => {
       const cells = currentRow.filter(
@@ -23,8 +24,34 @@ describe('GridService', () => {
       return rowCount + (cells ? cells.length : 0);
     }, 0);
 
+    expect(created).toBe(true);
     expect(count).toBe(1);
     expect(tiles.length).toBe(1);
+  });
+
+  it('do not create tile when grid is full', () => {
+    const tile = { id: 'id', value: 1, x: 1, y: 1 };
+    const positions: OptionalTile[][] = [
+      [tile, tile, tile],
+      [tile, tile, tile],
+      [tile, tile, tile],
+    ];
+    const tiles: Tile[] = [
+      tile,
+      tile,
+      tile,
+      tile,
+      tile,
+      tile,
+      tile,
+      tile,
+      tile,
+    ];
+    const service = new GridService(positions, tiles);
+
+    const created = service.createNewTile();
+
+    expect(created).toBe(false);
   });
 
   it('moves a tile towards up when the movement is up', async () => {
