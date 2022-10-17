@@ -26,3 +26,12 @@ npm run test:coverage
 ```
 
 Enjoy!
+
+## Roadmap
+[x] Base game. Only frontend with Vue 3
+[ ] Persist game in local storage
+[ ] Score
+[ ] Kubernetes configuration
+[ ] Sign Up and Sign In. Saving score
+[ ] Leaderboard
+[ ] Multiplayer
